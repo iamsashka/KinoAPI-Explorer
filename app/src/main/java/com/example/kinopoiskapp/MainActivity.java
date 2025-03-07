@@ -1,7 +1,6 @@
 package com.example.kinopoiskapp;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -12,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
 
-import java.io.IOException;
 import java.util.List;
 
 import retrofit2.Call;
@@ -22,11 +20,15 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "KinopoiskApp";
     private EditText movieInput;
     private Button searchButton;
     private TextView movieInfo;
     private ImageView moviePoster;
+    private Button prevButton;
+    private Button nextButton;
+
+    private List<MovieResponse.Movie> movies;
+    private int currentMovieIndex = 0;
 
     private static final String API_KEY = "bc6cc148-6816-4ea1-8b3f-18271de84ff5";
     private static final String BASE_URL = "https://kinopoiskapiunofficial.tech/";
@@ -40,8 +42,24 @@ public class MainActivity extends AppCompatActivity {
         movieInfo = findViewById(R.id.movieInfo);
         moviePoster = findViewById(R.id.moviePoster);
         searchButton = findViewById(R.id.searchButton);
+        prevButton = findViewById(R.id.prevButton);
+        nextButton = findViewById(R.id.nextButton);
 
         searchButton.setOnClickListener(v -> searchMovies(movieInput.getText().toString()));
+
+        prevButton.setOnClickListener(v -> {
+            if (movies != null && currentMovieIndex > 0) {
+                currentMovieIndex--;
+                displayMovieInfo(movies.get(currentMovieIndex));
+            }
+        });
+
+        nextButton.setOnClickListener(v -> {
+            if (movies != null && currentMovieIndex < movies.size() - 1) {
+                currentMovieIndex++;
+                displayMovieInfo(movies.get(currentMovieIndex));
+            }
+        });
     }
 
     private void searchMovies(String query) {
@@ -57,26 +75,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<MovieResponse> call, Response<MovieResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<MovieResponse.Movie> movies = response.body().getFilms();
+                    movies = response.body().getFilms();
                     if (movies != null && !movies.isEmpty()) {
-                        displayMovieInfo(movies.get(0)); // Отображаем первый фильм из списка
+                        currentMovieIndex = 0;
+                        displayMovieInfo(movies.get(currentMovieIndex));
                     } else {
                         movieInfo.setText("Фильмы не найдены.");
                     }
                 } else {
-                    try {
-                        String errorBody = response.errorBody().string();
-                        Log.e(TAG, "Ошибка: " + errorBody);
-                    } catch (IOException e) {
-                        Log.e(TAG, "Ошибка при чтении тела ответа", e);
-                    }
                     handleErrorResponse(response);
                 }
             }
 
             @Override
             public void onFailure(Call<MovieResponse> call, Throwable t) {
-                Log.e(TAG, "Ошибка сети: " + t.getMessage());
                 movieInfo.setText("Ошибка сети: " + t.getMessage());
             }
         });
@@ -107,7 +119,6 @@ public class MainActivity extends AppCompatActivity {
                     .orElse("") + "\n";
             movieInfo.setText(movieDetails);
 
-            // Загружаем изображение постера с помощью библиотеки Glide
             Glide.with(this)
                     .load(movie.getPosterUrl())
                     .into(moviePoster);
